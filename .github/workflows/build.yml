@@ -44,15 +44,8 @@ jobs:
             base64 -d debug.keystore.base64 > debug.keystore
           fi
 
-      - name: Ensure Gradle wrapper exists and is executable
-        run: |
-          if [ ! -f ./gradlew ]; then
-            gradle wrapper --gradle-version 9.3.1
-          fi
-          chmod +x ./gradlew
-
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
