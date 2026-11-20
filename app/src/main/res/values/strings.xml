@@ -1,0 +1,129 @@
+<resources>
+    <string name="app_name">DroidDeck Hub</string>
+    <string name="hud_brand_title">DroidDeck</string>
+    <string name="hud_subtitle">System Telemetry &amp; Apps</string>
+    <string name="telemetry_live_badge">Active</string>
+    <string name="cd_refresh_telemetry">Refresh telemetry and rescan library</string>
+    <string name="cd_open_diagnostics">Open hardware diagnostics</string>
+    <string name="cd_pin_apps">Pin apps to deck</string>
+    <string name="cd_search_deck">Search installed apps</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_favorite_toggle">Toggle favorite</string>
+    <string name="cd_card_options">Card options</string>
+    <string name="cd_hero_background">Device header backdrop</string>
+    <string name="cd_empty_deck_art">Device hardware preview</string>
+
+    <string name="telemetry_ram_label">Free RAM</string>
+    <string name="telemetry_battery_label">Battery</string>
+    <string name="telemetry_thermal_label">Thermal</string>
+    <string name="telemetry_storage_label">Storage</string>
+    <string name="telemetry_mb_unit">%1$d MB</string>
+    <string name="telemetry_gb_unit">%1$.1f GB</string>
+    <string name="telemetry_percent_unit">%1$d%%</string>
+    <string name="telemetry_temp_unit">%1$.1f°C</string>
+
+    <string name="filter_all">All Apps</string>
+    <string name="filter_favorites">Favorites</string>
+    <string name="filter_games">Games</string>
+    <string name="filter_pinned">Pinned</string>
+
+    <string name="hero_launch_cta">Launch</string>
+    <string name="hero_select_cta">Pin Apps</string>
+    <string name="hero_badge_recent">Recent</string>
+    <string name="hero_badge_spotlight">Featured</string>
+    <string name="hero_empty_title">Ready Your %1$s</string>
+    <string name="hero_empty_subtitle">No auto-detected games found yet. Pin apps, utilities, or games onto your %1$s.</string>
+    <string name="device_profile_cores_abi">%1$d-Core · %2$s</string>
+    <string name="device_profile_refresh_hz">%1$d Hz</string>
+    <string name="device_profile_ram_gb">%1$.1f GB RAM</string>
+    <string name="cd_device_silhouette">%1$s hardware icon</string>
+    <string name="cd_device_hero_banner">%1$s hardware preview</string>
+
+    <string name="badge_game">Game</string>
+    <string name="badge_pinned">Pinned</string>
+    <string name="search_placeholder">Search apps…</string>
+    <string name="search_apps_placeholder">Search installed apps…</string>
+
+    <string name="empty_filter_title">No Matching Apps</string>
+    <string name="empty_filter_favorites">Star any app to keep quick access in Favorites.</string>
+    <string name="empty_filter_pinned">Tap Pin App to add emulators, launchers, or other apps.</string>
+    <string name="empty_filter_search">No items match your current search query.</string>
+    <string name="empty_filter_games">No installed apps declare a game category. Pin apps manually using Pin App.</string>
+
+    <string name="action_add_to_deck">Pin App</string>
+    <string name="action_show_hidden">Hidden (%1$d)</string>
+    <string name="action_favorite">Add to Favorites</string>
+    <string name="action_unfavorite">Remove Favorite</string>
+    <string name="action_pin">Pin to Launcher</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="action_hide">Hide</string>
+    <string name="action_unhide">Restore</string>
+    <string name="action_set_spotlight">Set Featured</string>
+    <string name="action_launch_app">Open App</string>
+
+    <string name="picker_title">Pin Apps</string>
+    <string name="picker_subtitle">Choose installed apps or games to include in DroidDeck.</string>
+    <string name="picker_rescan">Rescan</string>
+    <string name="picker_done">Done</string>
+
+    <string name="diagnostics_title">Hardware Diagnostics</string>
+    <string name="diagnostics_subtitle">Live Android system metrics sampled from device services.</string>
+    <string name="diagnostics_refresh">Refresh</string>
+    <string name="diagnostics_ram_title">System Memory (RAM)</string>
+    <string name="diagnostics_ram_detail">%1$d MB free of %2$d MB total (%3$d%% available)</string>
+    <string name="diagnostics_battery_title">Battery &amp; Power</string>
+    <string name="diagnostics_battery_charging">Charging · %1$d%% · %2$.1f°C</string>
+    <string name="diagnostics_battery_discharging">On Battery · %1$d%% · %2$.1f°C</string>
+    <string name="diagnostics_thermal_title">Thermal Headroom</string>
+    <string name="diagnostics_storage_title">Internal Storage</string>
+    <string name="diagnostics_storage_detail">%1$.1f GB free of %2$.1f GB total</string>
+
+    <string name="hidden_sheet_title">Hidden Apps</string>
+    <string name="hidden_sheet_subtitle">Restore any previously hidden app back to your list.</string>
+
+    <string name="error_launch_unavailable">Unable to open %1$s — no launcher activity found.</string>
+    <string name="msg_pinned_added">%1$s pinned</string>
+    <string name="msg_pinned_removed">%1$s unpinned</string>
+    <string name="msg_hidden_item">%1$s hidden</string>
+    <string name="msg_restored_item">%1$s restored</string>
+
+    <string name="session_guard_armed">Session Alerts On</string>
+    <string name="session_guard_off">Session Alerts Off</string>
+    <string name="session_guard_needs_perm">Enable Session Alerts</string>
+    <string name="cd_session_guard_toggle">Toggle background session alerts</string>
+    <string name="msg_session_guard_enabled">Background thermal, battery, and RAM alerts enabled.</string>
+    <string name="msg_session_guard_disabled">Background session alerts paused.</string>
+    <string name="msg_notification_perm_denied">Notification permission declined — app launching still works without background alerts.</string>
+
+    <string name="notif_channel_monitor_name">Active Session Monitor</string>
+    <string name="notif_channel_monitor_desc">Shows live RAM, battery, and thermal status while a launched session is active.</string>
+    <string name="notif_channel_alerts_name">Hardware Threshold Alerts</string>
+    <string name="notif_channel_alerts_desc">Warns when thermals exceed your target, battery drops to 20% or below, or free RAM runs low.</string>
+    <string name="notif_monitor_title">Session Monitor · %1$s</string>
+    <string name="notif_monitor_body">RAM %1$d MB · Battery %2$d%% · Thermal %3$s</string>
+    <string name="notif_action_stop">Stop Monitor</string>
+
+    <string name="alert_thermal_title">Thermal Warning (%1$s)</string>
+    <string name="alert_thermal_body">%1$s is pushing device thermals to %2$.1f°C. Consider lowering settings or pausing to cool down.</string>
+    <string name="alert_thermal_target_body">%1$s reached %2$s (your %3$s limit). Lowering graphics or pausing briefly helps prevent throttling.</string>
+    <string name="alert_battery_title">Low Battery (%1$d%%)</string>
+    <string name="alert_battery_body">Battery dropped to %1$d%% while running %2$s. Plug in soon to avoid performance throttling.</string>
+    <string name="alert_ram_title">Low Free RAM (%1$d MB)</string>
+    <string name="alert_ram_body">Available memory is down to %1$d MB (%2$d%% free) during %3$s.</string>
+
+    <string name="hud_thermal_target_pill">Target %1$s</string>
+    <string name="tuner_title">Thermal &amp; Sampling Target</string>
+    <string name="tuner_subtitle">Set your background alert limit and telemetry refresh cadence</string>
+    <string name="tuner_unit_c">°C</string>
+    <string name="tuner_unit_f">°F</string>
+    <string name="tuner_sampling_badge">UI %1$s · BG %2$s</string>
+    <string name="tuner_headroom_ok">Now %1$s (%2$s headroom)</string>
+    <string name="tuner_headroom_hot">Now %1$s (at or above target)</string>
+    <string name="tuner_os_note">Android OS controls CPU clocks; DroidDeck tunes thermal alerts, sampling rate, and headroom feedback.</string>
+
+    <string name="cpu_load_badge">CPU %1$d%% · %2$s</string>
+    <string name="cpu_tier_calm">Idle</string>
+    <string name="cpu_tier_active">Active</string>
+    <string name="cpu_tier_high">Busy</string>
+    <string name="cpu_tier_peak">Peak</string>
+</resources>
