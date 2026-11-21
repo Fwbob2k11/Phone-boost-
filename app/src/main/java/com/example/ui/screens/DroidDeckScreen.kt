@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.ui.components.AppPickerBottomSheet
+import com.example.ui.components.CustomizeBottomSheet
 import com.example.ui.components.CyberArcadeBackdrop
 import com.example.ui.components.DiagnosticsBottomSheet
 import com.example.ui.components.EmptyHeroDeckCard
@@ -144,6 +145,7 @@ fun DroidDeckScreen(
                             viewModel.refreshTelemetry()
                             viewModel.rescanInstalledApps()
                         },
+                        onCustomizeClick = { viewModel.setCustomizeOpen(true) },
                         onAddPinClick = { viewModel.setPickerOpen(true) }
                     )
 
@@ -207,6 +209,28 @@ fun DroidDeckScreen(
             onDismiss = { viewModel.setHiddenSheetOpen(false) }
         )
     }
+
+    if (uiState.isCustomizeOpen) {
+        CustomizeBottomSheet(
+            accentTheme = uiState.accentTheme,
+            showRamGauge = uiState.showRamGauge,
+            showBatteryGauge = uiState.showBatteryGauge,
+            showThermalGauge = uiState.showThermalGauge,
+            showStorageGauge = uiState.showStorageGauge,
+            thermalLimitCelsius = uiState.thermalLimitCelsius,
+            currentTempCelsius = uiState.telemetry.batteryTempCelsius,
+            useFahrenheit = uiState.useFahrenheit,
+            onAccentThemeSelected = { viewModel.setAccentTheme(it) },
+            onToggleRamGauge = { viewModel.setShowRamGauge(it) },
+            onToggleBatteryGauge = { viewModel.setShowBatteryGauge(it) },
+            onToggleThermalGauge = { viewModel.setShowThermalGauge(it) },
+            onToggleStorageGauge = { viewModel.setShowStorageGauge(it) },
+            onThermalLimitChange = { viewModel.setThermalLimitCelsius(it) },
+            onToggleUnit = { viewModel.toggleTemperatureUnit() },
+            onResetDefaults = { viewModel.resetCustomization() },
+            onDismiss = { viewModel.setCustomizeOpen(false) }
+        )
+    }
 }
 
 @Composable
@@ -226,6 +250,10 @@ private fun CompactConsoleLayout(
             hasNotificationPermission = uiState.hasNotificationPermission,
             thermalLimitCelsius = uiState.thermalLimitCelsius,
             useFahrenheit = uiState.useFahrenheit,
+            showRamGauge = uiState.showRamGauge,
+            showBatteryGauge = uiState.showBatteryGauge,
+            showThermalGauge = uiState.showThermalGauge,
+            showStorageGauge = uiState.showStorageGauge,
             onOpenDiagnostics = { viewModel.setDiagnosticsOpen(true) },
             onSessionGuardClick = onSessionGuardClick
         )
@@ -337,6 +365,10 @@ private fun ExpandedCockpitLayout(
                 hasNotificationPermission = uiState.hasNotificationPermission,
                 thermalLimitCelsius = uiState.thermalLimitCelsius,
                 useFahrenheit = uiState.useFahrenheit,
+                showRamGauge = uiState.showRamGauge,
+                showBatteryGauge = uiState.showBatteryGauge,
+                showThermalGauge = uiState.showThermalGauge,
+                showStorageGauge = uiState.showStorageGauge,
                 onOpenDiagnostics = { viewModel.setDiagnosticsOpen(true) },
                 onSessionGuardClick = onSessionGuardClick
             )

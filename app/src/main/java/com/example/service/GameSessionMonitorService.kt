@@ -18,19 +18,20 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.example.MainActivity
 import com.example.R
+import com.example.data.local.DroidDeckPreferencesStore
 import com.example.data.model.HardwareTelemetry
 import com.example.data.telemetry.SessionAlertEvaluator
 import com.example.data.telemetry.SessionAlertState
 import com.example.data.telemetry.SessionAlertType
 import com.example.data.telemetry.TelemetryMonitor
 import com.example.data.telemetry.ThermalTuningConfig
-import com.example.data.telemetry.ThermalTuningStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -39,14 +40,14 @@ class GameSessionMonitorService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var monitorJob: Job? = null
     private lateinit var telemetryMonitor: TelemetryMonitor
-    private lateinit var tuningStore: ThermalTuningStore
+    private lateinit var preferencesStore: DroidDeckPreferencesStore
     private var alertState = SessionAlertState()
     private var activeGameName: String = "Game Session"
 
     override fun onCreate() {
         super.onCreate()
         telemetryMonitor = TelemetryMonitor(applicationContext)
-        tuningStore = ThermalTuningStore(applicationContext)
+        preferencesStore = DroidDeckPreferencesStore(applicationContext)
         ensureNotificationChannels()
     }
 
@@ -101,8 +102,9 @@ class GameSessionMonitorService : Service() {
         monitorJob?.cancel()
         monitorJob = serviceScope.launch {
             while (isActive) {
-                val limitCelsius = tuningStore.getThermalLimitCelsius()
-                val useFahrenheit = tuningStore.isUseFahrenheit()
+                val prefs = preferencesStore.preferencesFlow.first()
+                val limitCelsius = prefs.thermalLimitCelsius
+                val useFahrenheit = prefs.useFahrenheit
                 val zone = ThermalTuningConfig.zoneForCelsius(limitCelsius)
 
                 val snapshot = telemetryMonitor.sample()

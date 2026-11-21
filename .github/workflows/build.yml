@@ -38,14 +38,12 @@ jobs:
           gradle-version: '9.3.1'
           validate-wrappers: false
 
-      - name: Restore debug keystore
-        run: |
-          if [ -f debug.keystore.base64 ] && [ ! -f debug.keystore ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
-          fi
-
       - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -noprompt -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          gradle assembleDebug --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4

@@ -23,12 +23,12 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
         )
         setContent {
-            DroidDeckTheme {
-                val deckViewModel: DroidDeckViewModel = viewModel(
-                    factory = DroidDeckViewModel.factory(application)
-                )
-                val uiState by deckViewModel.uiState.collectAsStateWithLifecycle()
+            val deckViewModel: DroidDeckViewModel = viewModel(
+                factory = DroidDeckViewModel.factory(application)
+            )
+            val uiState by deckViewModel.uiState.collectAsStateWithLifecycle()
 
+            DroidDeckTheme(accentTheme = uiState.accentTheme) {
                 LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
                     deckViewModel.onResumeRefresh()
                 }

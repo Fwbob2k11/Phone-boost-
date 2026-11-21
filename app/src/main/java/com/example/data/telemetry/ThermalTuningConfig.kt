@@ -47,7 +47,7 @@ enum class ThermalPerformanceZone(
 }
 
 object ThermalTuningConfig {
-    const val MIN_TEMP_C = 34
+    const val MIN_TEMP_C = 35
     const val MAX_TEMP_C = 45
     const val DEFAULT_TEMP_C = 39
 
@@ -55,7 +55,7 @@ object ThermalTuningConfig {
 
     fun zoneForCelsius(tempC: Int): ThermalPerformanceZone {
         return when (clampCelsius(tempC)) {
-            in 34..36 -> ThermalPerformanceZone.COOL_ECO
+            in 35..36 -> ThermalPerformanceZone.COOL_ECO
             in 37..40 -> ThermalPerformanceZone.BALANCED
             in 41..42 -> ThermalPerformanceZone.PERFORMANCE
             else -> ThermalPerformanceZone.PEAK_WATCH

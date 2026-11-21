@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BatteryChargingFull
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SdStorage
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
@@ -71,6 +73,7 @@ import kotlin.math.roundToInt
 fun TopConsoleHud(
     isRefreshing: Boolean,
     onRefreshClick: () -> Unit,
+    onCustomizeClick: () -> Unit,
     onAddPinClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -100,7 +103,7 @@ fun TopConsoleHud(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(
                     text = stringResource(R.string.hud_brand_title),
@@ -137,7 +140,7 @@ fun TopConsoleHud(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             IconButton(
                 onClick = onRefreshClick,
@@ -153,6 +156,19 @@ fun TopConsoleHud(
                 )
             }
 
+            IconButton(
+                onClick = onCustomizeClick,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .testTag("customize_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Settings,
+                    contentDescription = stringResource(R.string.cd_customize_deck),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
             FilledTonalButton(
                 onClick = onAddPinClick,
                 colors = ButtonDefaults.filledTonalButtonColors(
@@ -161,8 +177,9 @@ fun TopConsoleHud(
                 ),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                 shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
                 modifier = Modifier
-                    .height(44.dp)
+                    .height(42.dp)
                     .testTag("add_pin_apps_button")
             ) {
                 Icon(
@@ -188,6 +205,10 @@ fun TelemetryStrip(
     hasNotificationPermission: Boolean,
     thermalLimitCelsius: Int,
     useFahrenheit: Boolean,
+    showRamGauge: Boolean = true,
+    showBatteryGauge: Boolean = true,
+    showThermalGauge: Boolean = true,
+    showStorageGauge: Boolean = true,
     onOpenDiagnostics: () -> Unit,
     onSessionGuardClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -201,6 +222,7 @@ fun TelemetryStrip(
         telemetry.batteryPercent <= 20 -> CoralAlert
         else -> cyan
     }
+    val anyGaugeVisible = showRamGauge || showBatteryGauge || showThermalGauge || showStorageGauge
     val interactionSource = remember { MutableInteractionSource() }
 
     Surface(
@@ -229,46 +251,73 @@ fun TelemetryStrip(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TelemetryArcTile(
-                    icon = Icons.Rounded.Memory,
-                    label = stringResource(R.string.telemetry_ram_label),
-                    value = stringResource(R.string.telemetry_mb_unit, telemetry.freeRamMb),
-                    progress = telemetry.ramFreeFraction,
-                    accentColor = cyan,
-                    secondaryColor = slate,
-                    modifier = Modifier.weight(1f)
-                )
-                TelemetryArcTile(
-                    icon = if (telemetry.isCharging) {
-                        Icons.Rounded.BatteryChargingFull
-                    } else {
-                        Icons.Rounded.BatteryFull
-                    },
-                    label = stringResource(R.string.telemetry_battery_label),
-                    value = stringResource(R.string.telemetry_percent_unit, telemetry.batteryPercent),
-                    progress = (telemetry.batteryPercent / 100f).coerceIn(0f, 1f),
-                    accentColor = batteryColor,
-                    secondaryColor = slate,
-                    modifier = Modifier.weight(1f)
-                )
-                TelemetryArcTile(
-                    icon = Icons.Rounded.Thermostat,
-                    label = stringResource(R.string.telemetry_thermal_label),
-                    value = telemetry.thermalTier.label,
-                    progress = thermalProgress,
-                    accentColor = thermalColor,
-                    secondaryColor = slate,
-                    modifier = Modifier.weight(1f)
-                )
-                TelemetryArcTile(
-                    icon = Icons.Rounded.SdStorage,
-                    label = stringResource(R.string.telemetry_storage_label),
-                    value = stringResource(R.string.telemetry_gb_unit, telemetry.freeStorageGb),
-                    progress = 1f - telemetry.storageUsedFraction,
-                    accentColor = EmeraldPulse,
-                    secondaryColor = slate,
-                    modifier = Modifier.weight(1f)
-                )
+                if (showRamGauge) {
+                    TelemetryArcTile(
+                        icon = Icons.Rounded.Memory,
+                        label = stringResource(R.string.telemetry_ram_label),
+                        value = stringResource(R.string.telemetry_mb_unit, telemetry.freeRamMb),
+                        progress = telemetry.ramFreeFraction,
+                        accentColor = cyan,
+                        secondaryColor = slate,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("gauge_tile_ram")
+                    )
+                }
+                if (showBatteryGauge) {
+                    TelemetryArcTile(
+                        icon = if (telemetry.isCharging) {
+                            Icons.Rounded.BatteryChargingFull
+                        } else {
+                            Icons.Rounded.BatteryFull
+                        },
+                        label = stringResource(R.string.telemetry_battery_label),
+                        value = stringResource(R.string.telemetry_percent_unit, telemetry.batteryPercent),
+                        progress = (telemetry.batteryPercent / 100f).coerceIn(0f, 1f),
+                        accentColor = batteryColor,
+                        secondaryColor = slate,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("gauge_tile_battery")
+                    )
+                }
+                if (showThermalGauge) {
+                    TelemetryArcTile(
+                        icon = Icons.Rounded.Thermostat,
+                        label = stringResource(R.string.telemetry_thermal_label),
+                        value = telemetry.thermalTier.label,
+                        progress = thermalProgress,
+                        accentColor = thermalColor,
+                        secondaryColor = slate,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("gauge_tile_thermal")
+                    )
+                }
+                if (showStorageGauge) {
+                    TelemetryArcTile(
+                        icon = Icons.Rounded.SdStorage,
+                        label = stringResource(R.string.telemetry_storage_label),
+                        value = stringResource(R.string.telemetry_gb_unit, telemetry.freeStorageGb),
+                        progress = 1f - telemetry.storageUsedFraction,
+                        accentColor = EmeraldPulse,
+                        secondaryColor = slate,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("gauge_tile_storage")
+                    )
+                }
+                if (!anyGaugeVisible) {
+                    Text(
+                        text = stringResource(R.string.telemetry_gauges_hidden_hint),
+                        style = TelemetryLabelStyle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp)
+                            .testTag("gauges_hidden_hint")
+                    )
+                }
                 Icon(
                     imageVector = Icons.Rounded.Tune,
                     contentDescription = stringResource(R.string.cd_open_diagnostics),
@@ -277,13 +326,20 @@ fun TelemetryStrip(
                 )
             }
 
-            // Compact live RGB LED headroom bar across the telemetry strip
-            SegmentedLedBar(
-                progress = telemetry.ramFreeFraction,
-                segmentCount = 18,
-                height = 4.dp,
-                invertHeatColors = false
-            )
+            if (anyGaugeVisible) {
+                val (ledProgress, invertHeat) = when {
+                    showRamGauge -> telemetry.ramFreeFraction to false
+                    showBatteryGauge -> (telemetry.batteryPercent / 100f).coerceIn(0f, 1f) to false
+                    showThermalGauge -> thermalProgress to true
+                    else -> (1f - telemetry.storageUsedFraction) to false
+                }
+                SegmentedLedBar(
+                    progress = ledProgress,
+                    segmentCount = 18,
+                    height = 4.dp,
+                    invertHeatColors = invertHeat
+                )
+            }
 
             // Session Guard toggle pill for background game-session alerts
             val guardActive = isSessionGuardEnabled && hasNotificationPermission
@@ -669,12 +725,13 @@ private fun DiagnosticMeterCard(
 }
 
 @Composable
-private fun ThermalPerformanceTunerCard(
+fun ThermalPerformanceTunerCard(
     thermalLimitCelsius: Int,
     currentTempCelsius: Float,
     useFahrenheit: Boolean,
     onThermalLimitChange: (Int) -> Unit,
-    onToggleUnit: () -> Unit
+    onToggleUnit: () -> Unit,
+    sliderTestTag: String = "thermal_performance_slider"
 ) {
     val zone = ThermalTuningConfig.zoneForCelsius(thermalLimitCelsius)
     val accent = zoneColor(zone)
@@ -810,7 +867,7 @@ private fun ThermalPerformanceTunerCard(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("thermal_performance_slider")
+                    .testTag(sliderTestTag)
             )
 
             Row(

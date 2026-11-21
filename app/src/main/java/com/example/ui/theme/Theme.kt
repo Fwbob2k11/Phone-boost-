@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import com.example.data.model.DeckAccentTheme
 
 val DroidDeckShapes = Shapes(
     small = RoundedCornerShape(10.dp),
@@ -15,10 +16,11 @@ val DroidDeckShapes = Shapes(
 
 @Composable
 fun DroidDeckTheme(
+    accentTheme: DeckAccentTheme = DeckAccentTheme.CYBER_CYAN,
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = DroidDeckDarkColorScheme,
+        colorScheme = colorSchemeForAccent(accentTheme),
         typography = DroidDeckTypography,
         shapes = DroidDeckShapes,
         content = content

@@ -2,7 +2,6 @@ package com.example.ui.viewmodel
 
 import android.Manifest
 import android.app.Application
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -11,7 +10,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.DroidDeckDatabase
+import com.example.data.local.DroidDeckPreferences
+import com.example.data.local.DroidDeckPreferencesStore
 import com.example.data.local.LibraryEntry
+import com.example.data.model.DeckAccentTheme
 import com.example.data.model.DeckFilter
 import com.example.data.model.DeckItem
 import com.example.data.model.DeviceProfile
@@ -21,7 +23,6 @@ import com.example.data.repository.DeviceAppRepository
 import com.example.data.telemetry.DeviceProfileProvider
 import com.example.data.telemetry.TelemetryMonitor
 import com.example.data.telemetry.ThermalTuningConfig
-import com.example.data.telemetry.ThermalTuningStore
 import com.example.service.GameSessionMonitorService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -66,20 +67,25 @@ data class DroidDeckUiState(
     val isDiagnosticsOpen: Boolean = false,
     val isPickerOpen: Boolean = false,
     val isHiddenSheetOpen: Boolean = false,
+    val isCustomizeOpen: Boolean = false,
     val isSessionGuardEnabled: Boolean = true,
     val hasNotificationPermission: Boolean = true,
     val thermalLimitCelsius: Int = ThermalTuningConfig.DEFAULT_TEMP_C,
-    val useFahrenheit: Boolean = false
+    val useFahrenheit: Boolean = false,
+    val accentTheme: DeckAccentTheme = DeckAccentTheme.CYBER_CYAN,
+    val showRamGauge: Boolean = true,
+    val showBatteryGauge: Boolean = true,
+    val showThermalGauge: Boolean = true,
+    val showStorageGauge: Boolean = true
 )
 
 class DroidDeckViewModel(
     application: Application,
     private val repository: DeviceAppRepository,
-    private val telemetryMonitor: TelemetryMonitor
+    private val telemetryMonitor: TelemetryMonitor,
+    private val preferencesStore: DroidDeckPreferencesStore
 ) : AndroidViewModel(application) {
 
-    private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    private val tuningStore = ThermalTuningStore(application)
     private val deviceProfile = DeviceProfileProvider(application).read()
 
     private val installedAppsFlow = MutableStateFlow<List<InstalledAppInfo>>(emptyList())
@@ -93,12 +99,14 @@ class DroidDeckViewModel(
     private val isDiagnosticsOpenFlow = MutableStateFlow(false)
     private val isPickerOpenFlow = MutableStateFlow(false)
     private val isHiddenSheetOpenFlow = MutableStateFlow(false)
-    private val isSessionGuardEnabledFlow = MutableStateFlow(
-        prefs.getBoolean(KEY_SESSION_GUARD_ENABLED, true)
-    )
+    private val isCustomizeOpenFlow = MutableStateFlow(false)
     private val hasNotificationPermissionFlow = MutableStateFlow(checkNotificationPermission())
-    private val thermalLimitCelsiusFlow = MutableStateFlow(tuningStore.getThermalLimitCelsius())
-    private val useFahrenheitFlow = MutableStateFlow(tuningStore.isUseFahrenheit())
+
+    @Volatile
+    private var latestThermalLimitCelsius: Int = ThermalTuningConfig.DEFAULT_TEMP_C
+
+    @Volatile
+    private var latestPreferences: DroidDeckPreferences = DroidDeckPreferences()
 
     private val _events = MutableSharedFlow<DeckEvent>()
     val events: SharedFlow<DeckEvent> = _events.asSharedFlow()
@@ -116,46 +124,31 @@ class DroidDeckViewModel(
         isDiagnosticsOpenFlow,
         isPickerOpenFlow,
         isHiddenSheetOpenFlow,
-        isLoadingAppsFlow,
-        isRefreshingTelemetryFlow
-    ) { diagnostics, picker, hidden, loadingApps, refreshingTelemetry ->
+        isCustomizeOpenFlow,
+        isLoadingAppsFlow
+    ) { diagnostics, picker, hidden, customize, loadingApps ->
         SheetVisibilityFlags(
             isDiagnosticsOpen = diagnostics,
             isPickerOpen = picker,
             isHiddenSheetOpen = hidden,
-            isLoadingApps = loadingApps,
-            isRefreshingTelemetry = refreshingTelemetry
+            isCustomizeOpen = customize,
+            isLoadingApps = loadingApps
         )
     }
 
-    private val guardAndThermalFlow = combine(
-        isSessionGuardEnabledFlow,
-        hasNotificationPermissionFlow,
-        thermalLimitCelsiusFlow,
-        useFahrenheitFlow
-    ) { guardEnabled, hasNotifPerm, thermalLimit, useFahrenheit ->
-        GuardAndThermalFlags(
-            isSessionGuardEnabled = guardEnabled,
-            hasNotificationPermission = hasNotifPerm,
-            thermalLimitCelsius = thermalLimit,
-            useFahrenheit = useFahrenheit
-        )
-    }
-
-    private val sheetAndGuardStateFlow = combine(
+    private val uiControlStateFlow = combine(
         sheetVisibilityFlow,
-        guardAndThermalFlow
-    ) { sheet, guard ->
-        SheetAndGuardFlags(
-            isDiagnosticsOpen = sheet.isDiagnosticsOpen,
-            isPickerOpen = sheet.isPickerOpen,
-            isHiddenSheetOpen = sheet.isHiddenSheetOpen,
-            isLoadingApps = sheet.isLoadingApps,
-            isRefreshingTelemetry = sheet.isRefreshingTelemetry,
-            isSessionGuardEnabled = guard.isSessionGuardEnabled,
-            hasNotificationPermission = guard.hasNotificationPermission,
-            thermalLimitCelsius = guard.thermalLimitCelsius,
-            useFahrenheit = guard.useFahrenheit
+        preferencesStore.preferencesFlow,
+        isRefreshingTelemetryFlow,
+        hasNotificationPermissionFlow
+    ) { sheet, prefs, refreshingTelemetry, hasNotifPerm ->
+        latestPreferences = prefs
+        latestThermalLimitCelsius = prefs.thermalLimitCelsius
+        UiControlFlags(
+            sheet = sheet,
+            prefs = prefs,
+            isRefreshingTelemetry = refreshingTelemetry,
+            hasNotificationPermission = hasNotifPerm
         )
     }
 
@@ -164,18 +157,15 @@ class DroidDeckViewModel(
         repository.libraryEntries,
         telemetryFlow,
         filterStateFlow,
-        sheetAndGuardStateFlow
-    ) { installedApps, entries, telemetry, filterParams, flags ->
-        buildUiState(installedApps, entries, telemetry, filterParams, flags)
+        uiControlStateFlow
+    ) { installedApps, entries, telemetry, filterParams, controls ->
+        buildUiState(installedApps, entries, telemetry, filterParams, controls)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
         initialValue = DroidDeckUiState(
             deviceProfile = deviceProfile,
-            isSessionGuardEnabled = isSessionGuardEnabledFlow.value,
-            hasNotificationPermission = hasNotificationPermissionFlow.value,
-            thermalLimitCelsius = thermalLimitCelsiusFlow.value,
-            useFahrenheit = useFahrenheitFlow.value
+            hasNotificationPermission = hasNotificationPermissionFlow.value
         )
     )
 
@@ -188,7 +178,7 @@ class DroidDeckViewModel(
         viewModelScope.launch {
             while (isActive) {
                 telemetryFlow.value = telemetryMonitor.sample()
-                val zone = ThermalTuningConfig.zoneForCelsius(thermalLimitCelsiusFlow.value)
+                val zone = ThermalTuningConfig.zoneForCelsius(latestThermalLimitCelsius)
                 delay(zone.foregroundSampleMs)
             }
         }
@@ -220,35 +210,71 @@ class DroidDeckViewModel(
 
     fun setThermalLimitCelsius(tempC: Int) {
         val clamped = ThermalTuningConfig.clampCelsius(tempC)
-        thermalLimitCelsiusFlow.value = clamped
-        tuningStore.setThermalLimitCelsius(clamped)
+        latestThermalLimitCelsius = clamped
+        viewModelScope.launch {
+            preferencesStore.setThermalLimitCelsius(clamped)
+        }
     }
 
     fun toggleTemperatureUnit() {
-        val next = !useFahrenheitFlow.value
-        useFahrenheitFlow.value = next
-        tuningStore.setUseFahrenheit(next)
+        val next = !latestPreferences.useFahrenheit
+        viewModelScope.launch {
+            preferencesStore.setUseFahrenheit(next)
+        }
+    }
+
+    fun setAccentTheme(theme: DeckAccentTheme) {
+        viewModelScope.launch {
+            preferencesStore.setAccentTheme(theme)
+        }
+    }
+
+    fun setShowRamGauge(visible: Boolean) {
+        viewModelScope.launch {
+            preferencesStore.setShowRamGauge(visible)
+        }
+    }
+
+    fun setShowBatteryGauge(visible: Boolean) {
+        viewModelScope.launch {
+            preferencesStore.setShowBatteryGauge(visible)
+        }
+    }
+
+    fun setShowThermalGauge(visible: Boolean) {
+        viewModelScope.launch {
+            preferencesStore.setShowThermalGauge(visible)
+        }
+    }
+
+    fun setShowStorageGauge(visible: Boolean) {
+        viewModelScope.launch {
+            preferencesStore.setShowStorageGauge(visible)
+        }
+    }
+
+    fun resetCustomization() {
+        latestThermalLimitCelsius = ThermalTuningConfig.DEFAULT_TEMP_C
+        viewModelScope.launch {
+            preferencesStore.resetCustomization()
+        }
     }
 
     fun toggleSessionGuard() {
-        val next = !isSessionGuardEnabledFlow.value
-        isSessionGuardEnabledFlow.value = next
-        prefs.edit().putBoolean(KEY_SESSION_GUARD_ENABLED, next).apply()
+        val next = !latestPreferences.isSessionGuardEnabled
         viewModelScope.launch {
+            preferencesStore.setSessionGuardEnabled(next)
             _events.emit(DeckEvent.SessionGuardChanged(next))
         }
     }
 
     fun onNotificationPermissionResult(granted: Boolean) {
         hasNotificationPermissionFlow.value = granted
-        if (granted) {
-            isSessionGuardEnabledFlow.value = true
-            prefs.edit().putBoolean(KEY_SESSION_GUARD_ENABLED, true).apply()
-            viewModelScope.launch {
+        viewModelScope.launch {
+            if (granted) {
+                preferencesStore.setSessionGuardEnabled(true)
                 _events.emit(DeckEvent.SessionGuardChanged(true))
-            }
-        } else {
-            viewModelScope.launch {
+            } else {
                 _events.emit(DeckEvent.NotificationPermissionDenied)
             }
         }
@@ -271,6 +297,10 @@ class DroidDeckViewModel(
         if (open) refreshTelemetry()
     }
 
+    fun setCustomizeOpen(open: Boolean) {
+        isCustomizeOpenFlow.value = open
+    }
+
     fun setPickerOpen(open: Boolean) {
         isPickerOpenFlow.value = open
         if (!open) pickerSearchQueryFlow.value = ""
@@ -287,7 +317,7 @@ class DroidDeckViewModel(
     fun launchApp(item: DeckItem) {
         selectedSpotlightPackageFlow.value = item.packageName
         viewModelScope.launch {
-            val shouldStartMonitor = isSessionGuardEnabledFlow.value && checkNotificationPermission()
+            val shouldStartMonitor = latestPreferences.isSessionGuardEnabled && checkNotificationPermission()
             if (shouldStartMonitor) {
                 GameSessionMonitorService.startSession(getApplication(), item.name)
             }
@@ -350,7 +380,7 @@ class DroidDeckViewModel(
         entries: List<LibraryEntry>,
         telemetry: HardwareTelemetry,
         filterParams: FilterParams,
-        flags: SheetAndGuardFlags
+        controls: UiControlFlags
     ): DroidDeckUiState {
         val entryMap = entries.associateBy { it.packageName }
         val pinnedSet = entries.filter { it.isPinned && !it.isHidden }.map { it.packageName }.toSet()
@@ -404,8 +434,8 @@ class DroidDeckViewModel(
             ?: visibleDeck.firstOrNull()
 
         return DroidDeckUiState(
-            isLoadingApps = flags.isLoadingApps,
-            isRefreshingTelemetry = flags.isRefreshingTelemetry,
+            isLoadingApps = controls.sheet.isLoadingApps,
+            isRefreshingTelemetry = controls.isRefreshingTelemetry,
             deviceProfile = deviceProfile,
             telemetry = telemetry,
             selectedFilter = filterParams.selectedFilter,
@@ -417,13 +447,19 @@ class DroidDeckViewModel(
             filteredDeckItems = filtered,
             hiddenItems = hiddenItems,
             spotlightItem = spotlight,
-            isDiagnosticsOpen = flags.isDiagnosticsOpen,
-            isPickerOpen = flags.isPickerOpen,
-            isHiddenSheetOpen = flags.isHiddenSheetOpen,
-            isSessionGuardEnabled = flags.isSessionGuardEnabled,
-            hasNotificationPermission = flags.hasNotificationPermission,
-            thermalLimitCelsius = flags.thermalLimitCelsius,
-            useFahrenheit = flags.useFahrenheit
+            isDiagnosticsOpen = controls.sheet.isDiagnosticsOpen,
+            isPickerOpen = controls.sheet.isPickerOpen,
+            isHiddenSheetOpen = controls.sheet.isHiddenSheetOpen,
+            isCustomizeOpen = controls.sheet.isCustomizeOpen,
+            isSessionGuardEnabled = controls.prefs.isSessionGuardEnabled,
+            hasNotificationPermission = controls.hasNotificationPermission,
+            thermalLimitCelsius = controls.prefs.thermalLimitCelsius,
+            useFahrenheit = controls.prefs.useFahrenheit,
+            accentTheme = controls.prefs.accentTheme,
+            showRamGauge = controls.prefs.showRamGauge,
+            showBatteryGauge = controls.prefs.showBatteryGauge,
+            showThermalGauge = controls.prefs.showThermalGauge,
+            showStorageGauge = controls.prefs.showStorageGauge
         )
     }
 
@@ -438,33 +474,18 @@ class DroidDeckViewModel(
         val isDiagnosticsOpen: Boolean,
         val isPickerOpen: Boolean,
         val isHiddenSheetOpen: Boolean,
-        val isLoadingApps: Boolean,
-        val isRefreshingTelemetry: Boolean
+        val isCustomizeOpen: Boolean,
+        val isLoadingApps: Boolean
     )
 
-    private data class GuardAndThermalFlags(
-        val isSessionGuardEnabled: Boolean,
-        val hasNotificationPermission: Boolean,
-        val thermalLimitCelsius: Int,
-        val useFahrenheit: Boolean
-    )
-
-    private data class SheetAndGuardFlags(
-        val isDiagnosticsOpen: Boolean,
-        val isPickerOpen: Boolean,
-        val isHiddenSheetOpen: Boolean,
-        val isLoadingApps: Boolean,
+    private data class UiControlFlags(
+        val sheet: SheetVisibilityFlags,
+        val prefs: DroidDeckPreferences,
         val isRefreshingTelemetry: Boolean,
-        val isSessionGuardEnabled: Boolean,
-        val hasNotificationPermission: Boolean,
-        val thermalLimitCelsius: Int,
-        val useFahrenheit: Boolean
+        val hasNotificationPermission: Boolean
     )
 
     companion object {
-        private const val PREFS_NAME = "droiddeck_prefs"
-        private const val KEY_SESSION_GUARD_ENABLED = "session_guard_enabled"
-
         fun factory(application: Application): ViewModelProvider.Factory {
             return object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
@@ -472,7 +493,13 @@ class DroidDeckViewModel(
                     val database = DroidDeckDatabase.getInstance(application)
                     val repository = DeviceAppRepository(application, database.libraryDao())
                     val telemetryMonitor = TelemetryMonitor(application)
-                    return DroidDeckViewModel(application, repository, telemetryMonitor) as T
+                    val preferencesStore = DroidDeckPreferencesStore(application)
+                    return DroidDeckViewModel(
+                        application = application,
+                        repository = repository,
+                        telemetryMonitor = telemetryMonitor,
+                        preferencesStore = preferencesStore
+                    ) as T
                 }
             }
         }

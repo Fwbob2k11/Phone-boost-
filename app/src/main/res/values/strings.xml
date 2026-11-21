@@ -126,4 +126,21 @@
     <string name="cpu_tier_active">Active</string>
     <string name="cpu_tier_high">Busy</string>
     <string name="cpu_tier_peak">Peak</string>
+
+    <string name="cd_customize_deck">Customize DroidDeck</string>
+    <string name="telemetry_gauges_hidden_hint">All gauges hidden · Tap to open diagnostics</string>
+    <string name="customize_title">Customize DroidDeck</string>
+    <string name="customize_subtitle">Theme accent, dashboard gauges, and thermal alert limit</string>
+    <string name="customize_reset">Reset</string>
+    <string name="customize_section_theme">Accent Color Theme</string>
+    <string name="customize_section_gauges">Dashboard System Gauges</string>
+    <string name="customize_section_thermal">Thermal Alert Target (35°C – 45°C)</string>
+    <string name="customize_theme_emerald">Emerald Green</string>
+    <string name="customize_theme_cyan">Cyber Cyan</string>
+    <string name="customize_theme_purple">Neon Purple</string>
+    <string name="customize_theme_crimson">Crimson Red</string>
+    <string name="customize_gauge_ram_desc">Free memory headroom &amp; MB readout</string>
+    <string name="customize_gauge_battery_desc">Charge level &amp; charging state</string>
+    <string name="customize_gauge_thermal_desc">Live device thermal tier</string>
+    <string name="customize_gauge_storage_desc">Available internal flash storage</string>
 </resources>

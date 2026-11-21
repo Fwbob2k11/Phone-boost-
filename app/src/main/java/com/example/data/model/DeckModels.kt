@@ -104,3 +104,16 @@ enum class DeckFilter {
     GAMES,
     PINNED
 }
+
+enum class DeckAccentTheme(val storageKey: String) {
+    EMERALD_GREEN("emerald_green"),
+    CYBER_CYAN("cyber_cyan"),
+    NEON_PURPLE("neon_purple"),
+    CRIMSON_RED("crimson_red");
+
+    companion object {
+        fun fromStorageKey(key: String?): DeckAccentTheme {
+            return entries.firstOrNull { it.storageKey == key } ?: CYBER_CYAN
+        }
+    }
+}

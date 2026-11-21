@@ -1,11 +1,14 @@
 package com.example
 
 import android.content.Context
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.local.DroidDeckDatabase
+import com.example.data.local.DroidDeckPreferencesStore
 import com.example.data.local.LibraryEntry
 import com.example.data.model.AndroidChassisStyle
+import com.example.data.model.DeckAccentTheme
 import com.example.data.model.HardwareTelemetry
 import com.example.data.model.ThermalTier
 import com.example.data.telemetry.DeviceProfileProvider
@@ -16,6 +19,11 @@ import com.example.data.telemetry.TelemetryMonitor
 import com.example.data.telemetry.ThermalPerformanceZone
 import com.example.data.telemetry.ThermalTuningConfig
 import com.example.ui.components.pulseCyclesPerSecond
+import com.example.ui.theme.CrimsonRedAccent
+import com.example.ui.theme.ElectricCyan
+import com.example.ui.theme.EmeraldGreenAccent
+import com.example.ui.theme.NeonPurpleAccent
+import com.example.ui.theme.colorSchemeForAccent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -25,6 +33,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -230,5 +239,52 @@ class ExampleRobolectricTest {
         val peakHz = pulseCyclesPerSecond(1.0f)
         assertTrue(idleHz < midHz)
         assertTrue(midHz < peakHz)
+    }
+
+    @Test
+    fun `datastore preferences persist accent theme gauge visibility and 35-45C thermal limit`() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val testFile = File(context.filesDir, "test_prefs_${System.nanoTime()}.preferences_pb")
+        val dataStore = PreferenceDataStoreFactory.create(
+            scope = this,
+            produceFile = { testFile }
+        )
+        val store = DroidDeckPreferencesStore(dataStore)
+
+        val initial = store.preferencesFlow.first()
+        assertEquals(DeckAccentTheme.CYBER_CYAN, initial.accentTheme)
+        assertTrue(initial.showRamGauge)
+        assertTrue(initial.showBatteryGauge)
+        assertTrue(initial.showThermalGauge)
+        assertTrue(initial.showStorageGauge)
+        assertEquals(39, initial.thermalLimitCelsius)
+
+        store.setAccentTheme(DeckAccentTheme.NEON_PURPLE)
+        store.setShowRamGauge(false)
+        store.setShowStorageGauge(false)
+        store.setThermalLimitCelsius(34) // clamps to 35°C minimum
+
+        val updated = store.preferencesFlow.first()
+        assertEquals(DeckAccentTheme.NEON_PURPLE, updated.accentTheme)
+        assertFalse(updated.showRamGauge)
+        assertTrue(updated.showBatteryGauge)
+        assertTrue(updated.showThermalGauge)
+        assertFalse(updated.showStorageGauge)
+        assertEquals(35, updated.thermalLimitCelsius)
+
+        store.setThermalLimitCelsius(45)
+        assertEquals(45, store.preferencesFlow.first().thermalLimitCelsius)
+
+        store.resetCustomization()
+        val reset = store.preferencesFlow.first()
+        assertEquals(DeckAccentTheme.CYBER_CYAN, reset.accentTheme)
+        assertTrue(reset.showRamGauge)
+        assertTrue(reset.showStorageGauge)
+        assertEquals(39, reset.thermalLimitCelsius)
+
+        assertEquals(EmeraldGreenAccent, colorSchemeForAccent(DeckAccentTheme.EMERALD_GREEN).primary)
+        assertEquals(ElectricCyan, colorSchemeForAccent(DeckAccentTheme.CYBER_CYAN).primary)
+        assertEquals(NeonPurpleAccent, colorSchemeForAccent(DeckAccentTheme.NEON_PURPLE).primary)
+        assertEquals(CrimsonRedAccent, colorSchemeForAccent(DeckAccentTheme.CRIMSON_RED).primary)
     }
 }
