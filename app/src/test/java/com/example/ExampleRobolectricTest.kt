@@ -11,6 +11,7 @@ import com.example.data.model.AndroidChassisStyle
 import com.example.data.model.DeckAccentTheme
 import com.example.data.model.HardwareTelemetry
 import com.example.data.model.ThermalTier
+import com.example.data.repository.DeviceAppRepository
 import com.example.data.telemetry.DeviceProfileProvider
 import com.example.data.telemetry.SessionAlertEvaluator
 import com.example.data.telemetry.SessionAlertState
@@ -286,5 +287,30 @@ class ExampleRobolectricTest {
         assertEquals(ElectricCyan, colorSchemeForAccent(DeckAccentTheme.CYBER_CYAN).primary)
         assertEquals(NeonPurpleAccent, colorSchemeForAccent(DeckAccentTheme.NEON_PURPLE).primary)
         assertEquals(CrimsonRedAccent, colorSchemeForAccent(DeckAccentTheme.CRIMSON_RED).primary)
+    }
+
+    @Test
+    fun `clean memory deletes temp cache files and returns refreshed telemetry`() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, DroidDeckDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val tempCache = File(context.cacheDir, "temp_test_asset.bin")
+            tempCache.writeBytes(ByteArray(4096))
+            assertTrue(tempCache.exists())
+
+            val repo = DeviceAppRepository(context, db.libraryDao())
+            val monitor = TelemetryMonitor(context)
+            val result = monitor.cleanMemory { repo.clearTransientCaches() }
+
+            assertFalse(tempCache.exists())
+            assertTrue(result.clearedCacheKb >= 4L)
+            assertTrue(result.freedRamMb >= 0L)
+            assertTrue(result.afterFreeRamMb >= 0L)
+            assertTrue(result.telemetry.lastUpdatedAt > 0L)
+        } finally {
+            db.close()
+        }
     }
 }

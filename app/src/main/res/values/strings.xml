@@ -143,4 +143,11 @@
     <string name="customize_gauge_battery_desc">Charge level &amp; charging state</string>
     <string name="customize_gauge_thermal_desc">Live device thermal tier</string>
     <string name="customize_gauge_storage_desc">Available internal flash storage</string>
+
+    <string name="action_clean_memory">Clean Memory</string>
+    <string name="action_cleaning_memory">Cleaning…</string>
+    <string name="cd_clean_memory">Clean app cache and trim memory</string>
+    <string name="msg_memory_cleaned_mb">Reclaimed %1$d MB · %2$d MB RAM now free</string>
+    <string name="msg_memory_cleaned_cache">Cleared %1$d KB cache · %2$d MB RAM free</string>
+    <string name="msg_memory_cleaned_trimmed">Memory trimmed · %1$d MB RAM available</string>
 </resources>

@@ -41,6 +41,11 @@ sealed interface DeckEvent {
     data class StatusMessage(val messageType: DeckStatusType, val appName: String) : DeckEvent
     data class SessionGuardChanged(val enabled: Boolean) : DeckEvent
     data object NotificationPermissionDenied : DeckEvent
+    data class MemoryCleaned(
+        val freedRamMb: Long,
+        val availableRamMb: Long,
+        val clearedCacheKb: Long
+    ) : DeckEvent
 }
 
 enum class DeckStatusType {
@@ -53,6 +58,7 @@ enum class DeckStatusType {
 data class DroidDeckUiState(
     val isLoadingApps: Boolean = true,
     val isRefreshingTelemetry: Boolean = false,
+    val isCleaningMemory: Boolean = false,
     val deviceProfile: DeviceProfile = DeviceProfile(),
     val telemetry: HardwareTelemetry = HardwareTelemetry(),
     val selectedFilter: DeckFilter = DeckFilter.ALL,
@@ -92,6 +98,7 @@ class DroidDeckViewModel(
     private val isLoadingAppsFlow = MutableStateFlow(true)
     private val telemetryFlow = MutableStateFlow(HardwareTelemetry())
     private val isRefreshingTelemetryFlow = MutableStateFlow(false)
+    private val isCleaningMemoryFlow = MutableStateFlow(false)
     private val selectedFilterFlow = MutableStateFlow(DeckFilter.ALL)
     private val searchQueryFlow = MutableStateFlow("")
     private val pickerSearchQueryFlow = MutableStateFlow("")
@@ -136,19 +143,31 @@ class DroidDeckViewModel(
         )
     }
 
+    private val telemetryActionFlow = combine(
+        isRefreshingTelemetryFlow,
+        isCleaningMemoryFlow,
+        hasNotificationPermissionFlow
+    ) { refreshing, cleaning, hasNotifPerm ->
+        TelemetryActionFlags(
+            isRefreshingTelemetry = refreshing,
+            isCleaningMemory = cleaning,
+            hasNotificationPermission = hasNotifPerm
+        )
+    }
+
     private val uiControlStateFlow = combine(
         sheetVisibilityFlow,
         preferencesStore.preferencesFlow,
-        isRefreshingTelemetryFlow,
-        hasNotificationPermissionFlow
-    ) { sheet, prefs, refreshingTelemetry, hasNotifPerm ->
+        telemetryActionFlow
+    ) { sheet, prefs, actions ->
         latestPreferences = prefs
         latestThermalLimitCelsius = prefs.thermalLimitCelsius
         UiControlFlags(
             sheet = sheet,
             prefs = prefs,
-            isRefreshingTelemetry = refreshingTelemetry,
-            hasNotificationPermission = hasNotifPerm
+            isRefreshingTelemetry = actions.isRefreshingTelemetry,
+            isCleaningMemory = actions.isCleaningMemory,
+            hasNotificationPermission = actions.hasNotificationPermission
         )
     }
 
@@ -190,6 +209,28 @@ class DroidDeckViewModel(
             telemetryFlow.value = telemetryMonitor.sample()
             delay(220L)
             isRefreshingTelemetryFlow.value = false
+        }
+    }
+
+    fun cleanMemory() {
+        if (isCleaningMemoryFlow.value) return
+        viewModelScope.launch {
+            isCleaningMemoryFlow.value = true
+            try {
+                val result = telemetryMonitor.cleanMemory {
+                    repository.clearTransientCaches()
+                }
+                telemetryFlow.value = result.telemetry
+                _events.emit(
+                    DeckEvent.MemoryCleaned(
+                        freedRamMb = result.freedRamMb,
+                        availableRamMb = result.afterFreeRamMb,
+                        clearedCacheKb = result.clearedCacheKb
+                    )
+                )
+            } finally {
+                isCleaningMemoryFlow.value = false
+            }
         }
     }
 
@@ -436,6 +477,7 @@ class DroidDeckViewModel(
         return DroidDeckUiState(
             isLoadingApps = controls.sheet.isLoadingApps,
             isRefreshingTelemetry = controls.isRefreshingTelemetry,
+            isCleaningMemory = controls.isCleaningMemory,
             deviceProfile = deviceProfile,
             telemetry = telemetry,
             selectedFilter = filterParams.selectedFilter,
@@ -478,10 +520,17 @@ class DroidDeckViewModel(
         val isLoadingApps: Boolean
     )
 
+    private data class TelemetryActionFlags(
+        val isRefreshingTelemetry: Boolean,
+        val isCleaningMemory: Boolean,
+        val hasNotificationPermission: Boolean
+    )
+
     private data class UiControlFlags(
         val sheet: SheetVisibilityFlags,
         val prefs: DroidDeckPreferences,
         val isRefreshingTelemetry: Boolean,
+        val isCleaningMemory: Boolean,
         val hasNotificationPermission: Boolean
     )
 

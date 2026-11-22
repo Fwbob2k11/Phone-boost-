@@ -14,9 +14,18 @@ import android.os.SystemClock
 import com.example.data.model.HardwareTelemetry
 import com.example.data.model.ThermalTier
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.roundToInt
+
+data class MemoryCleanResult(
+    val beforeFreeRamMb: Long,
+    val afterFreeRamMb: Long,
+    val freedRamMb: Long,
+    val clearedCacheKb: Long,
+    val telemetry: HardwareTelemetry
+)
 
 class TelemetryMonitor(context: Context) {
 
@@ -51,6 +60,22 @@ class TelemetryMonitor(context: Context) {
             freeStorageGb = freeStorageGb,
             totalStorageGb = totalStorageGb,
             lastUpdatedAt = System.currentTimeMillis()
+        )
+    }
+
+    suspend fun cleanMemory(onTrimCaches: () -> Long): MemoryCleanResult = withContext(Dispatchers.IO) {
+        val beforeFreeRamMb = readMemoryMb().first
+        val clearedBytes = runCatching { onTrimCaches() }.getOrDefault(0L).coerceAtLeast(0L)
+        System.gc()
+        delay(180L)
+        val refreshed = sample()
+        val freedRamMb = (refreshed.freeRamMb - beforeFreeRamMb).coerceAtLeast(0L)
+        MemoryCleanResult(
+            beforeFreeRamMb = beforeFreeRamMb,
+            afterFreeRamMb = refreshed.freeRamMb,
+            freedRamMb = freedRamMb,
+            clearedCacheKb = clearedBytes / 1024L,
+            telemetry = refreshed
         )
     }
 

@@ -129,6 +129,28 @@ class DeviceAppRepository(
         }
     }
 
+    fun clearTransientCaches(): Long {
+        iconCache.clear()
+        return deleteDirectoryContents(appContext.cacheDir)
+    }
+
+    private fun deleteDirectoryContents(dir: java.io.File?): Long {
+        if (dir == null || !dir.exists() || !dir.isDirectory) return 0L
+        var reclaimedBytes = 0L
+        val children = dir.listFiles() ?: return 0L
+        for (child in children) {
+            reclaimedBytes += if (child.isDirectory) {
+                val nested = deleteDirectoryContents(child)
+                child.delete()
+                nested
+            } else {
+                val size = child.length().coerceAtLeast(0L)
+                if (child.delete()) size else 0L
+            }
+        }
+        return reclaimedBytes
+    }
+
     @Suppress("DEPRECATION")
     private fun isApplicationGame(appInfo: ApplicationInfo): Boolean {
         val hasGameFlag = (appInfo.flags and ApplicationInfo.FLAG_IS_GAME) != 0

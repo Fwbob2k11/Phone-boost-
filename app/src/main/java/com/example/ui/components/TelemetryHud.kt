@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.BatteryFull
+import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Refresh
@@ -32,6 +35,7 @@ import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -198,6 +202,7 @@ fun TopConsoleHud(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TelemetryStrip(
     telemetry: HardwareTelemetry,
@@ -209,8 +214,10 @@ fun TelemetryStrip(
     showBatteryGauge: Boolean = true,
     showThermalGauge: Boolean = true,
     showStorageGauge: Boolean = true,
+    isCleaningMemory: Boolean = false,
     onOpenDiagnostics: () -> Unit,
     onSessionGuardClick: () -> Unit,
+    onCleanMemoryClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val cyan = MaterialTheme.colorScheme.primary
@@ -354,10 +361,10 @@ fun TelemetryStrip(
                 else -> stringResource(R.string.session_guard_off)
             }
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(10.dp),
@@ -369,7 +376,7 @@ fun TelemetryStrip(
                         .testTag("session_guard_pill")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -380,6 +387,48 @@ fun TelemetryStrip(
                             text = guardLabel,
                             style = TelemetryLabelStyle,
                             color = guardColor
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = cyan.copy(alpha = 0.14f),
+                    border = BorderStroke(1.dp, cyan.copy(alpha = 0.55f)),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable(enabled = !isCleaningMemory, onClick = onCleanMemoryClick)
+                        .testTag("clean_memory_button")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        if (isCleaningMemory) {
+                            CircularProgressIndicator(
+                                color = cyan,
+                                strokeWidth = 1.6.dp,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.CleaningServices,
+                                contentDescription = stringResource(R.string.cd_clean_memory),
+                                tint = cyan,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                        Text(
+                            text = stringResource(
+                                if (isCleaningMemory) {
+                                    R.string.action_cleaning_memory
+                                } else {
+                                    R.string.action_clean_memory
+                                }
+                            ),
+                            style = TelemetryLabelStyle,
+                            color = cyan
                         )
                     }
                 }
@@ -397,7 +446,7 @@ fun TelemetryStrip(
                         .testTag("hud_thermal_limit_pill")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -480,9 +529,11 @@ fun DiagnosticsBottomSheet(
     thermalLimitCelsius: Int,
     useFahrenheit: Boolean,
     isRefreshing: Boolean,
+    isCleaningMemory: Boolean = false,
     onThermalLimitChange: (Int) -> Unit,
     onToggleUnit: () -> Unit,
     onRefresh: () -> Unit,
+    onCleanMemory: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -583,7 +634,48 @@ fun DiagnosticsBottomSheet(
                 progress = telemetry.ramUsedFraction,
                 accentColor = cyan,
                 secondaryColor = slate,
-                invertHeatColors = true
+                invertHeatColors = true,
+                actionContent = {
+                    FilledTonalButton(
+                        onClick = onCleanMemory,
+                        enabled = !isCleaningMemory,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = cyan.copy(alpha = 0.16f),
+                            contentColor = cyan
+                        ),
+                        border = BorderStroke(1.dp, cyan.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp)
+                            .testTag("diagnostics_clean_memory_button")
+                    ) {
+                        if (isCleaningMemory) {
+                            CircularProgressIndicator(
+                                color = cyan,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.CleaningServices,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(
+                                if (isCleaningMemory) {
+                                    R.string.action_cleaning_memory
+                                } else {
+                                    R.string.action_clean_memory
+                                }
+                            ),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
             )
 
             val currentTempText = ThermalTuningConfig.formatTemp(
@@ -652,7 +744,8 @@ private fun DiagnosticMeterCard(
     progress: Float,
     accentColor: Color,
     secondaryColor: Color,
-    invertHeatColors: Boolean
+    invertHeatColors: Boolean,
+    actionContent: (@Composable () -> Unit)? = null
 ) {
     Surface(
         color = MaterialTheme.colorScheme.background.copy(alpha = 0.72f),
@@ -720,6 +813,8 @@ private fun DiagnosticMeterCard(
                 height = 7.dp,
                 invertHeatColors = invertHeatColors
             )
+
+            actionContent?.invoke()
         }
     }
 }

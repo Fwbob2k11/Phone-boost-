@@ -100,6 +100,22 @@ fun DroidDeckScreen(
                     )
                 DeckEvent.NotificationPermissionDenied ->
                     context.getString(R.string.msg_notification_perm_denied)
+                is DeckEvent.MemoryCleaned -> when {
+                    event.freedRamMb > 0L -> context.getString(
+                        R.string.msg_memory_cleaned_mb,
+                        event.freedRamMb,
+                        event.availableRamMb
+                    )
+                    event.clearedCacheKb > 0L -> context.getString(
+                        R.string.msg_memory_cleaned_cache,
+                        event.clearedCacheKb,
+                        event.availableRamMb
+                    )
+                    else -> context.getString(
+                        R.string.msg_memory_cleaned_trimmed,
+                        event.availableRamMb
+                    )
+                }
                 is DeckEvent.StatusMessage -> when (event.messageType) {
                     DeckStatusType.PINNED ->
                         context.getString(R.string.msg_pinned_added, event.appName)
@@ -176,9 +192,11 @@ fun DroidDeckScreen(
             thermalLimitCelsius = uiState.thermalLimitCelsius,
             useFahrenheit = uiState.useFahrenheit,
             isRefreshing = uiState.isRefreshingTelemetry,
+            isCleaningMemory = uiState.isCleaningMemory,
             onThermalLimitChange = { viewModel.setThermalLimitCelsius(it) },
             onToggleUnit = { viewModel.toggleTemperatureUnit() },
             onRefresh = { viewModel.refreshTelemetry() },
+            onCleanMemory = { viewModel.cleanMemory() },
             onDismiss = { viewModel.setDiagnosticsOpen(false) }
         )
     }
@@ -254,8 +272,10 @@ private fun CompactConsoleLayout(
             showBatteryGauge = uiState.showBatteryGauge,
             showThermalGauge = uiState.showThermalGauge,
             showStorageGauge = uiState.showStorageGauge,
+            isCleaningMemory = uiState.isCleaningMemory,
             onOpenDiagnostics = { viewModel.setDiagnosticsOpen(true) },
-            onSessionGuardClick = onSessionGuardClick
+            onSessionGuardClick = onSessionGuardClick,
+            onCleanMemoryClick = { viewModel.cleanMemory() }
         )
 
         if (uiState.isLoadingApps && uiState.deckItems.isEmpty()) {
@@ -369,8 +389,10 @@ private fun ExpandedCockpitLayout(
                 showBatteryGauge = uiState.showBatteryGauge,
                 showThermalGauge = uiState.showThermalGauge,
                 showStorageGauge = uiState.showStorageGauge,
+                isCleaningMemory = uiState.isCleaningMemory,
                 onOpenDiagnostics = { viewModel.setDiagnosticsOpen(true) },
-                onSessionGuardClick = onSessionGuardClick
+                onSessionGuardClick = onSessionGuardClick,
+                onCleanMemoryClick = { viewModel.cleanMemory() }
             )
 
             val spotlight = uiState.spotlightItem
